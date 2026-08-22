@@ -31,7 +31,7 @@ const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 /// 解码内嵌 PNG 为窗口图标（Alt+Tab / 任务栏 / 标题栏用）
 fn load_window_icon() -> Option<tao::window::Icon> {
-    let decoder = png::Decoder::new(ICON_PNG.as_slice());
+    let decoder = png::Decoder::new(std::io::Cursor::new(ICON_PNG));
     let mut reader = decoder.read_info().ok()?;
     let mut buf = vec![0u8; reader.output_buffer_size()];
     let info = reader.next_frame(&mut buf).ok()?;
