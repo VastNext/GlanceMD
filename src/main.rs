@@ -27,6 +27,16 @@ const PREVIEW_JS: &str = include_str!("frontend/preview.js");
 const TABS_JS: &str = include_str!("frontend/tabs.js");
 const MARKED_JS: &str = include_str!("frontend/marked.min.js");
 const HLJS: &str = include_str!("frontend/highlight.min.js");
+const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
+
+/// 解码内嵌 PNG 为窗口图标（Alt+Tab / 任务栏 / 标题栏用）
+fn load_window_icon() -> Option<tao::window::Icon> {
+    let decoder = png::Decoder::new(ICON_PNG.as_slice());
+    let mut reader = decoder.read_info().ok()?;
+    let mut buf = vec![0u8; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buf).ok()?;
+    tao::window::Icon::from_rgba(buf, info.width, info.height).ok()
+}
 
 #[derive(Debug)]
 enum UserEvent {
@@ -124,6 +134,7 @@ fn main() {
     let window = WindowBuilder::new()
         .with_title("GlanceMD - Untitled")
         .with_decorations(false)
+        .with_window_icon(load_window_icon())
         .with_inner_size(LogicalSize::new(size.0 as f64, size.1 as f64))
         .with_position(LogicalPosition::new(pos.0 as f64, pos.1 as f64))
         .build(&event_loop)
