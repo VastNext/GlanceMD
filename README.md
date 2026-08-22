@@ -5,12 +5,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/FountainChan/GlanceMD/releases/latest"><img src="https://img.shields.io/github/v/release/FountainChan/GlanceMD?style=flat-square&logo=github&color=a855f7" alt="release"></a>
+  <a href="https://github.com/VastNext/GlanceMD/releases/latest"><img src="https://img.shields.io/github/v/release/VastNext/GlanceMD?style=flat-square&logo=github&color=a855f7" alt="release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-ec4899?style=flat-square" alt="license"></a>
-  <a href="https://github.com/FountainChan/GlanceMD/stargazers"><img src="https://img.shields.io/github/stars/FountainChan/GlanceMD?style=flat-square&color=f59e0b" alt="stars"></a>
+  <a href="https://github.com/VastNext/GlanceMD/stargazers"><img src="https://img.shields.io/github/stars/VastNext/GlanceMD?style=flat-square&color=f59e0b" alt="stars"></a>
   <img src="https://img.shields.io/badge/platform-Windows-0078D6?style=flat-square&logo=windows11" alt="platform">
   <img src="https://img.shields.io/badge/built%20with-Rust-DEA584?style=flat-square&logo=rust" alt="rust">
-  <img src="https://img.shields.io/github/last-commit/FountainChan/GlanceMD?style=flat-square&color=8b5cf6" alt="last commit">
+  <img src="https://img.shields.io/github/last-commit/VastNext/GlanceMD?style=flat-square&color=8b5cf6" alt="last commit">
 </p>
 
 一款轻量级的原生 Windows Markdown 查看器与编辑器。启动速度媲美记事本，渲染效果媲美 Obsidian —— 全部打包在约 900 KB 的单文件可执行程序中。
