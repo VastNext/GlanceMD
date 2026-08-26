@@ -439,7 +439,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::should_close_window;
+    use super::{is_app_navigation, should_close_window};
     use std::cell::Cell;
 
     #[test]
@@ -462,6 +462,20 @@ mod tests {
     #[test]
     fn dirty_window_closes_when_discard_is_confirmed() {
         assert!(should_close_window(true, || true));
+    }
+
+    #[test]
+    fn 仅允许应用根页面和页内导航() {
+        assert!(is_app_navigation("http://glancemd.localhost/"));
+        assert!(is_app_navigation("http://glancemd.localhost/#usage"));
+        assert!(is_app_navigation("http://glancemd.localhost/index.html"));
+        assert!(is_app_navigation("glancemd://localhost/"));
+        assert!(is_app_navigation("glancemd://localhost/index.html"));
+        assert!(is_app_navigation("glancemd://localhost/#usage"));
+        assert!(!is_app_navigation("about:blank"));
+        assert!(!is_app_navigation("http://glancemd.localhost/README_CN.md"));
+        assert!(!is_app_navigation("glancemd://localhost/README_CN.md"));
+        assert!(!is_app_navigation("https://example.com"));
     }
 }
 
@@ -489,23 +503,4 @@ fn build_html() -> String {
             &format!("<body data-platform=\"{}\">", platform_name()),
         )
         .replace("<!-- __SCRIPTS__ -->", &scripts)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::is_app_navigation;
-
-    #[test]
-    fn 仅允许应用根页面和页内导航() {
-        assert!(is_app_navigation("http://glancemd.localhost/"));
-        assert!(is_app_navigation("http://glancemd.localhost/#usage"));
-        assert!(is_app_navigation("http://glancemd.localhost/index.html"));
-        assert!(is_app_navigation("glancemd://localhost/"));
-        assert!(is_app_navigation("glancemd://localhost/index.html"));
-        assert!(is_app_navigation("glancemd://localhost/#usage"));
-        assert!(!is_app_navigation("about:blank"));
-        assert!(!is_app_navigation("http://glancemd.localhost/README_CN.md"));
-        assert!(!is_app_navigation("glancemd://localhost/README_CN.md"));
-        assert!(!is_app_navigation("https://example.com"));
-    }
 }
