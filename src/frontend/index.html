@@ -65,6 +65,17 @@
   </div>
 
   <div id="content">
+    <section id="navigation-fallback" role="alert" aria-live="assertive" tabindex="-1" hidden>
+      <div class="navigation-fallback-copy">
+        <strong>无法打开链接</strong>
+        <span id="navigation-fallback-target"></span>
+      </div>
+      <div class="navigation-fallback-actions">
+        <button id="navigation-fallback-back" type="button">返回文档</button>
+        <button id="navigation-fallback-retry" type="button">重试</button>
+        <button id="navigation-fallback-close" class="navigation-fallback-close" type="button" aria-label="关闭提示">&times;</button>
+      </div>
+    </section>
     <div id="toc-panel">
       <div id="toc-list"></div>
       <div id="toc-resize-handle"></div>

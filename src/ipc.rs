@@ -214,7 +214,7 @@ fn handle_save_as(webview: &WebView, content: Option<String>) {
     }
 }
 
-fn send_to_js(webview: &WebView, event: &str, data: &serde_json::Value) {
+pub(crate) fn send_to_js(webview: &WebView, event: &str, data: &serde_json::Value) {
     let script = format!(
         "window.__fromRust({}, {})",
         serde_json::to_string(event).unwrap(),

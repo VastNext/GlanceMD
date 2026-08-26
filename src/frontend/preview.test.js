@@ -5,7 +5,24 @@ const vm = require('node:vm');
 
 function loadPreview() {
   let clickHandler;
+  let activePath = 'D:/Software/CLIProxyAPI/README.md';
+  const listeners = {};
   const messages = [];
+  const preview = { innerHTML: '<h1>当前文档</h1>', querySelectorAll() { return []; } };
+  const fallback = {
+    hidden: true,
+    focus() {},
+    querySelector() { return null; },
+  };
+  const elements = {
+    preview,
+    'preview-container': { focus() {} },
+    'navigation-fallback': fallback,
+    'navigation-fallback-target': { textContent: '' },
+    'navigation-fallback-back': {},
+    'navigation-fallback-retry': {},
+    'navigation-fallback-close': {},
+  };
   const context = {
     marked: {
       Renderer: function() {},
@@ -15,13 +32,14 @@ function loadPreview() {
     hljs: {},
     TabManager: {
       getActiveTab() {
-        return { path: 'D:/Software/CLIProxyAPI/README.md' };
+        return { path: activePath };
       },
     },
     sendToRust(command, data) {
       messages.push({ command, data });
     },
     document: {
+      activeElement: { focus() {} },
       getElementById(id) {
         if (id === 'preview-container') {
           return {
@@ -30,7 +48,11 @@ function loadPreview() {
             },
           };
         }
-        return { querySelectorAll() { return []; } };
+        const element = elements[id] || { querySelectorAll() { return []; } };
+        element.addEventListener = function(type, handler) {
+          listeners[id + ':' + type] = handler;
+        };
+        return element;
       },
       querySelectorAll() { return []; },
     },
@@ -44,7 +66,14 @@ function loadPreview() {
 
   const source = fs.readFileSync(__dirname + '/preview.js', 'utf8');
   vm.runInNewContext(source, context);
-  return { clickHandler, messages };
+  return {
+    clickHandler,
+    elements,
+    listeners,
+    messages,
+    setActivePath(path) { activePath = path; },
+    window: context.window,
+  };
 }
 
 test('点击相对 Markdown 链接时请求 Rust 打开目标文件', () => {
@@ -65,6 +94,59 @@ test('点击相对 Markdown 链接时请求 Rust 打开目标文件', () => {
   assert.equal(messages.length, 1);
   assert.equal(messages[0].command, 'open_file');
   assert.equal(messages[0].data.path, 'D:/Software/CLIProxyAPI/README_CN.md');
+});
+
+test('被拦截导航显示回退提示且保留当前预览', () => {
+  const loaded = loadPreview();
+  const elements = loaded.elements;
+
+  elements.preview.innerHTML = '<h1>当前文档</h1>';
+  assert.equal(typeof elements['navigation-fallback'].hidden, 'boolean');
+
+  assert.doesNotThrow(() => {
+    // Rust 事件最终调用该全局函数。
+    loaded.window.showNavigationFallback('http://glancemd.localhost/README_CN.md');
+  });
+  assert.equal(elements.preview.innerHTML, '<h1>当前文档</h1>');
+  assert.equal(elements['navigation-fallback'].hidden, false);
+});
+
+test('重试被拦截的应用内路径时打开当前文档旁的文件', () => {
+  const loaded = loadPreview();
+
+  loaded.window.showNavigationFallback('http://glancemd.localhost/README_CN.md');
+  loaded.listeners['navigation-fallback-retry:click']();
+
+  assert.equal(loaded.messages.at(-1).command, 'open_file');
+  assert.equal(
+    loaded.messages.at(-1).data.path,
+    'D:/Software/CLIProxyAPI/README_CN.md',
+  );
+  assert.equal(loaded.elements['navigation-fallback'].hidden, true);
+});
+
+test('重试使用触发失败时的源标签路径', () => {
+  const loaded = loadPreview();
+  loaded.window.showNavigationFallback('http://glancemd.localhost/README_CN.md');
+  loaded.setActivePath('D:/Other/other.md');
+  loaded.listeners['navigation-fallback-retry:click']();
+
+  assert.equal(
+    loaded.messages.at(-1).data.path,
+    'D:/Software/CLIProxyAPI/README_CN.md',
+  );
+});
+
+test('macOS/Linux 的 glancemd 协议被拦截后仍显示回退并可重试', () => {
+  const loaded = loadPreview();
+  loaded.setActivePath('/Users/admin/Docs/README.md');
+  loaded.window.showNavigationFallback('glancemd://localhost/README_CN.md');
+  assert.equal(loaded.elements['navigation-fallback'].hidden, false);
+  assert.equal(loaded.elements['navigation-fallback-retry'].hidden, false);
+
+  loaded.listeners['navigation-fallback-retry:click']();
+  assert.equal(loaded.messages.at(-1).command, 'open_file');
+  assert.equal(loaded.messages.at(-1).data.path, '/Users/admin/Docs/README_CN.md');
 });
 
 test('网络链接与页内锚点保持浏览器默认行为', () => {

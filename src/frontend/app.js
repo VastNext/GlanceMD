@@ -24,6 +24,11 @@ window.__fromRust = function(event, data) {
     case 'error':
       showError(data.message);
       break;
+    case 'navigation_blocked':
+      if (typeof window.showNavigationFallback === 'function') {
+        window.showNavigationFallback(data.url);
+      }
+      break;
   }
 };
 

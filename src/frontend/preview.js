@@ -90,6 +90,60 @@ window.__setImage = function(path, dataUri) {
   }
 };
 
+function resolveLocalLinkPath(href, sourcePath) {
+  var tab = typeof TabManager !== 'undefined' ? TabManager.getActiveTab() : null;
+  var tabPath = sourcePath || (tab && tab.path);
+  if (!href || !tabPath) return null;
+  var rawPath = href.replace(/[?#].*$/, '');
+  var decoded = decodeURIComponent(rawPath).replace(/\\/g, '/');
+  if (/^[a-zA-Z]:\//.test(decoded) || decoded.startsWith('/')) return decoded;
+  var base = tabPath.replace(/\\/g, '/').replace(/\/[^/]*$/, '');
+  return base + '/' + decoded.replace(/^\.\//, '');
+}
+
+var blockedNavigationUrl = null;
+var blockedNavigationPath = null;
+var fallbackPreviousFocus = null;
+
+function hideNavigationFallback() {
+  document.getElementById('navigation-fallback').hidden = true;
+  if (fallbackPreviousFocus && typeof fallbackPreviousFocus.focus === 'function') {
+    fallbackPreviousFocus.focus();
+  } else {
+    document.getElementById('preview-container').focus();
+  }
+}
+
+window.showNavigationFallback = function(url) {
+  blockedNavigationUrl = url;
+  fallbackPreviousFocus = document.activeElement;
+  blockedNavigationPath = null;
+  var href = url.replace(/^(?:http:\/\/glancemd\.localhost|glancemd:\/\/localhost)\//i, '');
+  try { blockedNavigationPath = resolveLocalLinkPath(href); } catch (_) {}
+  var fallback = document.getElementById('navigation-fallback');
+  document.getElementById('navigation-fallback-target').textContent = url;
+  var retry = document.getElementById('navigation-fallback-retry');
+  retry.hidden = !/^(?:http:\/\/glancemd\.localhost|glancemd:\/\/localhost)\//i.test(url);
+  fallback.hidden = false;
+  fallback.focus();
+};
+
+document.getElementById('navigation-fallback-back').addEventListener('click', hideNavigationFallback);
+document.getElementById('navigation-fallback-close').addEventListener('click', hideNavigationFallback);
+document.getElementById('navigation-fallback-retry').addEventListener('click', function() {
+  if (blockedNavigationUrl && blockedNavigationPath) {
+    hideNavigationFallback();
+    sendToRust('open_file', { path: blockedNavigationPath });
+  }
+});
+
+document.getElementById('navigation-fallback').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    hideNavigationFallback();
+  }
+});
+
 /* ── 代码块右上角复制按钮 ── */
 
 // 兜底复制：clipboard API 不可用时使用隐藏 textarea + execCommand
@@ -126,26 +180,18 @@ document.getElementById('preview-container').addEventListener('click', function(
     var href = link.getAttribute('href');
     var windowsPath = href && /^[a-zA-Z]:[\\/]/.test(href);
     if (href && (windowsPath || !/^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(href))) {
-      var tab = typeof TabManager !== 'undefined' ? TabManager.getActiveTab() : null;
-      if (tab && tab.path) {
-        var rawPath = href.replace(/[?#].*$/, '');
-        var decoded;
+      if (typeof TabManager !== 'undefined' && TabManager.getActiveTab()) {
         try {
-          decoded = decodeURIComponent(rawPath).replace(/\\/g, '/');
+          var path = resolveLocalLinkPath(href);
         } catch (_) {
           e.preventDefault();
           if (typeof showError === 'function') showError('链接地址格式无效');
           return;
         }
-        var path;
-        if (/^[a-zA-Z]:\//.test(decoded) || decoded.startsWith('/')) {
-          path = decoded;
-        } else {
-          var base = tab.path.replace(/\\/g, '/').replace(/\/[^/]*$/, '');
-          path = base + '/' + decoded.replace(/^\.\//, '');
+        if (path) {
+          e.preventDefault();
+          sendToRust('open_file', { path: path });
         }
-        e.preventDefault();
-        sendToRust('open_file', { path: path });
       }
     }
     return;
