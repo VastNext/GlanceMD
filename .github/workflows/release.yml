@@ -54,7 +54,7 @@ jobs:
       - run: cargo install cargo-packager --locked
       - run: cargo build --release --target ${{ matrix.target }}
       - name: 打包 macOS 应用
-        run: cargo packager --release --target ${{ matrix.target }} --formats app,dmg --out-dir dist
+        run: cargo packager --config Packager.toml --release --target ${{ matrix.target }} --formats app,dmg --out-dir dist
       - name: 标记未签名预览包
         run: |
           for file in dist/*; do
@@ -83,7 +83,7 @@ jobs:
       - run: cargo install cargo-packager --locked
       - run: cargo build --release --target x86_64-unknown-linux-gnu
       - name: 打包 Linux 应用
-        run: cargo packager --release --target x86_64-unknown-linux-gnu --formats deb,appimage --out-dir dist
+        run: cargo packager --config Packager.toml --release --target x86_64-unknown-linux-gnu --formats deb,appimage --out-dir dist
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux-x64

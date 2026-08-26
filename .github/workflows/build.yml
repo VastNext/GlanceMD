@@ -81,7 +81,7 @@ jobs:
 
       - name: 验证原生软件包
         if: matrix.formats != ''
-        run: cargo packager --release --target ${{ matrix.target }} --formats ${{ matrix.formats }} --out-dir dist
+        run: cargo packager --config Packager.toml --release --target ${{ matrix.target }} --formats ${{ matrix.formats }} --out-dir dist
 
       - uses: actions/upload-artifact@v4
         with:
