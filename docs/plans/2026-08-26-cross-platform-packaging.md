@@ -67,7 +67,7 @@
 
 **文件：**
 
-- 创建：`Packager.toml`
+- 修改：`Cargo.toml` 的 `[package.metadata.packager]`
 - 创建：`assets/icon.icns`（由现有 PNG 生成，若 CI 生成则提交源配置）
 - 创建或补充：Linux desktop/icon 资源（由 packager 配置生成）
 - 修改：`README.md`
