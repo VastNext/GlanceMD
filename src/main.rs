@@ -41,6 +41,15 @@ fn load_window_icon() -> Option<tao::window::Icon> {
 #[derive(Debug)]
 enum UserEvent {
     IpcMessage(String),
+    NavigationBlocked(String),
+}
+
+fn is_app_navigation(url: &str) -> bool {
+    let without_fragment = url.split('#').next().unwrap_or(url);
+    matches!(
+        without_fragment,
+        "http://glancemd.localhost/" | "http://glancemd.localhost/index.html"
+    )
 }
 
 fn main() {
@@ -147,6 +156,8 @@ fn main() {
 
     let proxy_ipc = proxy.clone();
     let proxy_drop = proxy.clone();
+    let proxy_navigation = proxy.clone();
+    let proxy_new_window = proxy.clone();
 
     let state_proto = Arc::clone(&app_state);
     let _webview = WebViewBuilder::new()
@@ -198,12 +209,23 @@ fn main() {
                     .unwrap()
             }
         })
+        .with_navigation_handler(move |url| {
+            if is_app_navigation(&url) {
+                true
+            } else {
+                let _ = proxy_navigation.send_event(UserEvent::NavigationBlocked(url));
+                false
+            }
+        })
         .with_url("http://glancemd.localhost/")
         .with_ipc_handler(move |request| {
             let body = request.body().to_string();
             let _ = proxy_ipc.send_event(UserEvent::IpcMessage(body));
         })
-        .with_new_window_req_handler(|_| false)
+        .with_new_window_req_handler(move |url| {
+            let _ = proxy_new_window.send_event(UserEvent::NavigationBlocked(url));
+            false
+        })
         .with_drag_drop_handler(move |event| {
             match event {
                 wry::DragDropEvent::Enter { .. } => {
@@ -253,6 +275,13 @@ fn main() {
         match event {
             Event::UserEvent(UserEvent::IpcMessage(msg)) => {
                 ipc::handle_ipc_message(&msg, &_webview, &window, &app_state);
+            }
+            Event::UserEvent(UserEvent::NavigationBlocked(url)) => {
+                ipc::send_to_js(
+                    &_webview,
+                    "navigation_blocked",
+                    &serde_json::json!({ "url": url }),
+                );
             }
             Event::WindowEvent {
                 event: WindowEvent::Resized(new_size),
@@ -307,4 +336,19 @@ fn build_html() -> String {
     INDEX_HTML
         .replace("/* __CSS__ */", STYLE_CSS)
         .replace("<!-- __SCRIPTS__ -->", &scripts)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_app_navigation;
+
+    #[test]
+    fn 仅允许应用根页面和页内导航() {
+        assert!(is_app_navigation("http://glancemd.localhost/"));
+        assert!(is_app_navigation("http://glancemd.localhost/#usage"));
+        assert!(is_app_navigation("http://glancemd.localhost/index.html"));
+        assert!(!is_app_navigation("about:blank"));
+        assert!(!is_app_navigation("http://glancemd.localhost/README_CN.md"));
+        assert!(!is_app_navigation("https://example.com"));
+    }
 }
