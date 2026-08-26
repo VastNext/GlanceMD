@@ -311,14 +311,14 @@ fn main() {
                 ipc::handle_ipc_message(&msg, &_webview, &window, &app_state);
             }
             Event::WindowEvent {
-                event: WindowEvent::Resized(new_size),
+                event: WindowEvent::Resized(_new_size),
                 ..
             } => {
                 #[cfg(target_os = "windows")]
                 {
                     use wry::WebViewExtWindows;
-                    let w = new_size.width as i32;
-                    let h = new_size.height as i32;
+                    let w = _new_size.width as i32;
+                    let h = _new_size.height as i32;
                     unsafe {
                         let controller = _webview.controller();
                         let _ = controller.SetBounds(RECT {
