@@ -81,7 +81,20 @@ jobs:
 
       - name: 验证原生软件包
         if: matrix.formats != ''
-        run: cargo packager --release --target ${{ matrix.target }} --formats ${{ matrix.formats }} --out-dir dist
+        run: |
+          for attempt in 1 2 3; do
+            # 清理可能残留的挂载卷，避免 hdiutil eject 偶发 Resource busy
+            if command -v hdiutil >/dev/null 2>&1; then
+              hdiutil detach "/Volumes/GlanceMD" -force >/dev/null 2>&1 || true
+            fi
+            rm -rf dist
+            if cargo packager --release --target ${{ matrix.target }} --formats ${{ matrix.formats }} --out-dir dist; then
+              exit 0
+            fi
+            echo "cargo packager 第 $attempt 次尝试失败，5 秒后重试..."
+            sleep 5
+          done
+          exit 1
 
       - uses: actions/upload-artifact@v4
         with:
