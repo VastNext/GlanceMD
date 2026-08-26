@@ -369,13 +369,7 @@ fn main() {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
-                let inner_size = window.inner_size();
-                let outer_pos = window.outer_position().unwrap_or_default();
-                window_state::save_window_state(
-                    (outer_pos.x, outer_pos.y),
-                    (inner_size.width, inner_size.height),
-                );
-                *control_flow = ControlFlow::Exit;
+                let _ = _webview.evaluate_script("window.__requestNativeClose()");
             }
             _ => {}
         }

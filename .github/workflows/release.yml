@@ -14,10 +14,52 @@ permissions:
   contents: write
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      ref: ${{ steps.release.outputs.ref }}
+    steps:
+      - name: 确定并校验发布标签
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="$DISPATCH_TAG"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "无效的发布标签：$TAG" >&2
+            exit 1
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "ref=refs/tags/$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.ref }}
+
+      - name: 校验标签与 Cargo 版本一致
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "发布标签 $TAG 与 Cargo 版本 v$VERSION 不一致" >&2
+            exit 1
+          fi
+
   windows:
+    needs: prepare
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
@@ -32,6 +74,7 @@ jobs:
           path: GlanceMD-windows-x64.exe
 
   macos:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -45,13 +88,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
-      - run: cargo install cargo-packager --locked
+      - run: cargo install cargo-packager --version 0.11.8 --locked
       - run: cargo build --release --target ${{ matrix.target }}
       - name: 打包 macOS 应用
         run: cargo packager --release --target ${{ matrix.target }} --formats app,dmg --out-dir dist
@@ -69,9 +114,12 @@ jobs:
           if-no-files-found: error
 
   linux:
+    needs: prepare
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
       - name: 安装 Linux 构建依赖
         run: |
           sudo apt-get update
@@ -80,7 +128,7 @@ jobs:
         with:
           targets: x86_64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
-      - run: cargo install cargo-packager --locked
+      - run: cargo install cargo-packager --version 0.11.8 --locked
       - run: cargo build --release --target x86_64-unknown-linux-gnu
       - name: 打包 Linux 应用
         run: cargo packager --release --target x86_64-unknown-linux-gnu --formats deb,appimage --out-dir dist
@@ -93,7 +141,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [windows, macos, linux]
+    needs: [prepare, windows, macos, linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -101,20 +149,10 @@ jobs:
           pattern: release-*
           merge-multiple: true
           path: release-assets
-      - name: 确定版本标签
-        id: tag
-        env:
-          DISPATCH_TAG: ${{ inputs.tag }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=$DISPATCH_TAG" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          fi
       - name: 创建或更新 Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.tag.outputs.name }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \

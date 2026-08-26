@@ -645,7 +645,7 @@ document.addEventListener('keydown', function(e) {
   } else if (e.key === 'Escape' && findState.open) {
     e.preventDefault();
     closeFind();
-  } else if (primaryModifier && e.key.toLowerCase() === 'o') {
+  } else if (primaryModifier && !e.shiftKey && e.key.toLowerCase() === 'o') {
     e.preventDefault();
     sendToRust('open_file');
   } else if (primaryModifier && !e.shiftKey && e.key.toLowerCase() === 's') {
@@ -664,10 +664,10 @@ document.addEventListener('keydown', function(e) {
     e.preventDefault();
     var active = TabManager.getActiveTab();
     if (active) TabManager.closeTab(active.id);
-  } else if (primaryModifier && !e.shiftKey && e.key === 'Tab') {
+  } else if (e.ctrlKey && !e.shiftKey && e.key === 'Tab') {
     e.preventDefault();
     TabManager.nextTab();
-  } else if (primaryModifier && e.shiftKey && e.key === 'Tab') {
+  } else if (e.ctrlKey && e.shiftKey && e.key === 'Tab') {
     e.preventDefault();
     TabManager.prevTab();
   } else if (primaryModifier && (e.key === '=' || e.key === '+')) {
@@ -697,6 +697,11 @@ document.getElementById('btn-close').addEventListener('click', function() {
   }
   sendToRust('window_close');
 });
+
+window.__requestNativeClose = function() {
+  if (TabManager.hasAnyDirty() && !confirm('You have unsaved changes. Close anyway?')) return;
+  sendToRust('window_close');
+};
 
 // Toolbar Buttons
 document.getElementById('btn-new').addEventListener('click', function() { TabManager.createTab(null, ''); });
