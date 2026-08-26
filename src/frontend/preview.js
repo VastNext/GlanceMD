@@ -118,12 +118,12 @@ window.showNavigationFallback = function(url) {
   blockedNavigationUrl = url;
   fallbackPreviousFocus = document.activeElement;
   blockedNavigationPath = null;
-  var href = url.replace(/^http:\/\/glancemd\.localhost\//i, '');
+  var href = url.replace(/^(?:http:\/\/glancemd\.localhost|glancemd:\/\/localhost)\//i, '');
   try { blockedNavigationPath = resolveLocalLinkPath(href); } catch (_) {}
   var fallback = document.getElementById('navigation-fallback');
   document.getElementById('navigation-fallback-target').textContent = url;
   var retry = document.getElementById('navigation-fallback-retry');
-  retry.hidden = !/^http:\/\/glancemd\.localhost\//i.test(url);
+  retry.hidden = !/^(?:http:\/\/glancemd\.localhost|glancemd:\/\/localhost)\//i.test(url);
   fallback.hidden = false;
   fallback.focus();
 };

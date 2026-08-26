@@ -54,6 +54,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // State
 var currentMode = 'edit';
 var splitMode = false;
+var isMacOS = document.body.dataset.platform === 'macos';
+
+function hasPrimaryModifier(event) {
+  return isMacOS ? event.metaKey : event.ctrlKey;
+}
 
 // Cross-mode selection helpers
 function selectInPreview(text, ratio) {
@@ -410,7 +415,7 @@ function applyZoom(level) {
 }
 
 document.addEventListener('wheel', function(e) {
-  if (e.ctrlKey) {
+  if (hasPrimaryModifier(e)) {
     e.preventDefault();
     applyZoom(zoomLevel + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
   }
@@ -638,28 +643,29 @@ document.getElementById('find-prev').addEventListener('click', findPrev);
 
 // Keyboard Shortcuts
 document.addEventListener('keydown', function(e) {
-  if (e.ctrlKey && e.key === 'f') {
+  var primaryModifier = hasPrimaryModifier(e);
+  if (primaryModifier && e.key.toLowerCase() === 'f') {
     e.preventDefault();
     openFind();
   } else if (e.key === 'Escape' && findState.open) {
     e.preventDefault();
     closeFind();
-  } else if (e.ctrlKey && e.key === 'o') {
+  } else if (primaryModifier && !e.shiftKey && e.key.toLowerCase() === 'o') {
     e.preventDefault();
     sendToRust('open_file');
-  } else if (e.ctrlKey && !e.shiftKey && e.key === 's') {
+  } else if (primaryModifier && !e.shiftKey && e.key.toLowerCase() === 's') {
     e.preventDefault();
     doSave();
-  } else if (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+  } else if (primaryModifier && e.shiftKey && e.key.toLowerCase() === 's') {
     e.preventDefault();
     sendToRust('save_as', { content: document.getElementById('editor').value });
-  } else if (e.ctrlKey && e.key === 'e') {
+  } else if (primaryModifier && e.key.toLowerCase() === 'e') {
     e.preventDefault();
     toggleMode();
-  } else if (e.ctrlKey && e.key === 'n') {
+  } else if (primaryModifier && e.key.toLowerCase() === 'n') {
     e.preventDefault();
     TabManager.createTab(null, '');
-  } else if (e.ctrlKey && e.key === 'w') {
+  } else if (primaryModifier && e.key.toLowerCase() === 'w') {
     e.preventDefault();
     var active = TabManager.getActiveTab();
     if (active) TabManager.closeTab(active.id);
@@ -669,19 +675,19 @@ document.addEventListener('keydown', function(e) {
   } else if (e.ctrlKey && e.shiftKey && e.key === 'Tab') {
     e.preventDefault();
     TabManager.prevTab();
-  } else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
+  } else if (primaryModifier && (e.key === '=' || e.key === '+')) {
     e.preventDefault();
     applyZoom(zoomLevel + ZOOM_STEP);
-  } else if (e.ctrlKey && e.key === '-') {
+  } else if (primaryModifier && e.key === '-') {
     e.preventDefault();
     applyZoom(zoomLevel - ZOOM_STEP);
-  } else if (e.ctrlKey && e.key === '0') {
+  } else if (primaryModifier && e.key === '0') {
     e.preventDefault();
     applyZoom(1);
-  } else if (e.ctrlKey && e.key === '\\') {
+  } else if (primaryModifier && e.key === '\\') {
     e.preventDefault();
     toggleSplit();
-  } else if (e.ctrlKey && e.shiftKey && (e.key === 'O' || e.key === 'o')) {
+  } else if (primaryModifier && e.shiftKey && e.key.toLowerCase() === 'o') {
     e.preventDefault();
     toggleTOC();
   }
@@ -720,6 +726,11 @@ document.getElementById('btn-theme').addEventListener('click', function() {
 
 // Init
 document.addEventListener('DOMContentLoaded', function() {
+  if (isMacOS) {
+    document.querySelectorAll('[title*="Ctrl+"]').forEach(function(element) {
+      element.title = element.title.replaceAll('Ctrl+', '⌘');
+    });
+  }
   var saved = null;
   try { saved = localStorage.getItem('glancemd-theme'); } catch(e) {}
   setTheme(saved || 'light');

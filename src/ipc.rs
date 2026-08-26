@@ -15,6 +15,8 @@ struct IpcMessage {
     path: Option<String>,
     #[serde(default)]
     title: Option<String>,
+    #[serde(default)]
+    dirty: Option<bool>,
 }
 
 pub fn handle_ipc_message(
@@ -37,17 +39,25 @@ pub fn handle_ipc_message(
             if let Some(p) = path {
                 match file_ops::read_file(&p) {
                     Ok(contents) => {
-                        send_to_js(webview, "file_opened", &serde_json::json!({
-                            "content": contents,
-                            "path": p
-                        }));
+                        send_to_js(
+                            webview,
+                            "file_opened",
+                            &serde_json::json!({
+                                "content": contents,
+                                "path": p
+                            }),
+                        );
                         // 单实例转发/拖放打开时确保窗口前置
                         window.set_minimized(false);
                         window.set_focus();
                     }
-                    Err(e) => send_to_js(webview, "error", &serde_json::json!({
-                        "message": format!("Failed to open file: {e}")
-                    })),
+                    Err(e) => send_to_js(
+                        webview,
+                        "error",
+                        &serde_json::json!({
+                            "message": format!("Failed to open file: {e}")
+                        }),
+                    ),
                 }
             }
         }
@@ -61,13 +71,21 @@ pub fn handle_ipc_message(
                 if let Some(ref path) = parsed.path {
                     match file_ops::write_file(path, content) {
                         Ok(_) => {
-                            send_to_js(webview, "file_saved", &serde_json::json!({
-                                "path": path
-                            }));
+                            send_to_js(
+                                webview,
+                                "file_saved",
+                                &serde_json::json!({
+                                    "path": path
+                                }),
+                            );
                         }
-                        Err(e) => send_to_js(webview, "error", &serde_json::json!({
-                            "message": format!("Failed to save: {e}")
-                        })),
+                        Err(e) => send_to_js(
+                            webview,
+                            "error",
+                            &serde_json::json!({
+                                "message": format!("Failed to save: {e}")
+                            }),
+                        ),
                     }
                 } else {
                     handle_save_as(webview, parsed.content);
@@ -81,6 +99,9 @@ pub fn handle_ipc_message(
             if let Some(title) = parsed.title {
                 window.set_title(&title);
             }
+        }
+        "set_dirty_state" => {
+            state.lock().unwrap().has_dirty_tabs = parsed.dirty.unwrap_or(false);
         }
         "window_minimize" => {
             window.set_minimized(true);
@@ -101,7 +122,7 @@ pub fn handle_ipc_message(
             if let Some(ref path) = parsed.path {
                 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
                 let encoded = utf8_percent_encode(path, NON_ALPHANUMERIC).to_string();
-                let url = format!("http://glancemd.localhost/local-image?{}", encoded);
+                let url = format!("{}local-image?{}", crate::platform_base_url(), encoded);
                 let script = format!(
                     "window.__setImage({}, {})",
                     serde_json::to_string(path).unwrap(),
@@ -112,56 +133,82 @@ pub fn handle_ipc_message(
         }
         "drag_enter" => {
             let _ = webview.evaluate_script(
-                "document.getElementById('drop-overlay').classList.add('visible')");
+                "document.getElementById('drop-overlay').classList.add('visible')",
+            );
         }
         "drag_leave" => {
             let _ = webview.evaluate_script(
-                "document.getElementById('drop-overlay').classList.remove('visible')");
+                "document.getElementById('drop-overlay').classList.remove('visible')",
+            );
         }
         "ready" => {
-            let (pending_file, pending_content, pending_title) = {
+            let (pending_files, pending_content, pending_title) = {
                 let mut st = state.lock().unwrap();
-                (st.pending_file.take(), st.pending_content.take(), st.pending_title.take())
+                st.frontend_ready = true;
+                (
+                    std::mem::take(&mut st.pending_files),
+                    st.pending_content.take(),
+                    st.pending_title.take(),
+                )
             };
-            if let Some(p) = pending_file {
-                match file_ops::read_file(&p) {
-                    Ok(contents) => {
-                        send_to_js(webview, "file_opened", &serde_json::json!({
-                            "content": contents,
-                            "path": p
-                        }));
+            if !pending_files.is_empty() {
+                for p in pending_files {
+                    match file_ops::read_file(&p) {
+                        Ok(contents) => {
+                            send_to_js(
+                                webview,
+                                "file_opened",
+                                &serde_json::json!({
+                                    "content": contents,
+                                    "path": p
+                                }),
+                            );
+                        }
+                        Err(e) => send_to_js(
+                            webview,
+                            "error",
+                            &serde_json::json!({
+                                "message": format!("Failed to open file: {e}")
+                            }),
+                        ),
                     }
-                    Err(e) => send_to_js(webview, "error", &serde_json::json!({
-                        "message": format!("Failed to open file: {e}")
-                    })),
                 }
             } else if let Some(content) = pending_content {
                 let title = pending_title.unwrap_or_else(|| "stdin".to_string());
-                send_to_js(webview, "stdin_opened", &serde_json::json!({
-                    "content": content,
-                    "title": title
-                }));
+                send_to_js(
+                    webview,
+                    "stdin_opened",
+                    &serde_json::json!({
+                        "content": content,
+                        "title": title
+                    }),
+                );
             }
         }
         _ => eprintln!("Unknown IPC command: {}", parsed.command),
     }
 }
 
-fn handle_save_as(
-    webview: &WebView,
-    content: Option<String>,
-) {
+fn handle_save_as(webview: &WebView, content: Option<String>) {
     if let Some(content) = content {
         if let Some(path) = file_ops::pick_save_file() {
             match file_ops::write_file(&path, &content) {
                 Ok(_) => {
-                    send_to_js(webview, "file_saved", &serde_json::json!({
-                        "path": path
-                    }));
+                    send_to_js(
+                        webview,
+                        "file_saved",
+                        &serde_json::json!({
+                            "path": path
+                        }),
+                    );
                 }
-                Err(e) => send_to_js(webview, "error", &serde_json::json!({
-                    "message": format!("Failed to save: {e}")
-                })),
+                Err(e) => send_to_js(
+                    webview,
+                    "error",
+                    &serde_json::json!({
+                        "message": format!("Failed to save: {e}")
+                    }),
+                ),
             }
         }
     }

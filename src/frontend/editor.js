@@ -19,7 +19,7 @@
 
   // Tab key inserts spaces (but not Ctrl+Tab which switches tabs)
   editor.addEventListener('keydown', function(e) {
-    if (e.key === 'Tab' && !e.ctrlKey) {
+    if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       var start = editor.selectionStart;
       var end = editor.selectionEnd;

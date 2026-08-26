@@ -8,14 +8,14 @@
   <a href="https://github.com/VastNext/GlanceMD/releases/latest"><img src="https://img.shields.io/github/v/release/VastNext/GlanceMD?style=flat-square&logo=github&color=a855f7" alt="release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-ec4899?style=flat-square" alt="license"></a>
   <a href="https://github.com/VastNext/GlanceMD/stargazers"><img src="https://img.shields.io/github/stars/VastNext/GlanceMD?style=flat-square&color=f59e0b" alt="stars"></a>
-  <img src="https://img.shields.io/badge/platform-Windows-0078D6?style=flat-square&logo=windows11" alt="platform">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-0078D6?style=flat-square" alt="platform">
   <img src="https://img.shields.io/badge/built%20with-Rust-DEA584?style=flat-square&logo=rust" alt="rust">
   <img src="https://img.shields.io/github/last-commit/VastNext/GlanceMD?style=flat-square&color=8b5cf6" alt="last commit">
 </p>
 
-一款轻量级的原生 Windows Markdown 查看器与编辑器。启动速度媲美记事本，渲染效果媲美 Obsidian —— 全部打包在约 900 KB 的单文件可执行程序中。
+一款轻量级的跨平台 Markdown 查看器与编辑器。启动速度媲美记事本，渲染效果媲美 Obsidian。Windows 版本保持约 900 KB 的单文件可执行程序，macOS 与 Linux 提供系统原生软件包。
 
-使用 Rust + WebView2 构建。无需安装器、无运行时依赖、不含 Electron。
+使用 Rust + 系统 WebView 构建，不含 Electron。Windows 使用 WebView2，macOS 使用系统 WebKit，Linux 使用 WebKitGTK。
 
 本项目基于开源项目 **[Peekdown](https://github.com/Mockitup/Peekdown)**（by Mockitup）深度开发而来，并采用 **[Marco](https://github.com/Ranrar/Marco)** 阅读器的排版主题。详见[致谢](#-致谢)。
 
@@ -75,13 +75,13 @@
 
 ## 🛠️ 构建
 
-需要 Rust 和 WebView2 运行时（Windows 10/11 预装）。
+需要 Rust，以及目标系统对应的 WebView 开发环境。Windows 10/11 已预装 WebView2；Linux 构建还需要 GTK3 与 WebKitGTK 4.1 开发包。
 
 ```bash
 cargo build --release
 ```
 
-输出：`target/release/GlanceMD.exe`
+Windows 输出：`target/release/GlanceMD.exe`。macOS 与 Linux 正式产物由 GitHub Actions 在对应系统的原生 Runner 上构建。
 
 ### 🚦 GitHub Actions 发布
 
@@ -91,12 +91,18 @@ cargo build --release
 git tag v1.3.6 && git push origin v1.3.6
 ```
 
-构建产物：`target/x86_64-pc-windows-msvc/release/GlanceMD.exe`
+发布产物：
+
+- Windows x64：`GlanceMD-windows-x64.exe`
+- macOS：Apple Silicon 与 Intel 的未签名 `.dmg`
+- Linux x64：`.deb` 与 `.AppImage`
+
+> macOS 包尚未接入 Developer ID 签名与 Apple 公证，首次运行可能需要在“系统设置 → 隐私与安全性”中手动允许。
 
 ## ⚙️ 技术栈
 
 - **Rust** — 窗口管理、文件读写、进程通信（[tao](https://github.com/niceshell/niceshell) + [wry](https://github.com/niceshell/niceshell)）
-- **WebView2** — 渲染引擎（Edge，Windows 10/11 预装）
+- **系统 WebView** — Windows 使用 WebView2，macOS 使用 WebKit，Linux 使用 WebKitGTK
 - **marked.js** — Markdown 转 HTML
 - **highlight.js** — 代码语法高亮
 - **不含 Electron、不含 Node、不含打包器** — 全部前端资源通过 `include_str!` 在编译期嵌入

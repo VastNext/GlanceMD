@@ -55,6 +55,7 @@ var TabManager = (function() {
       if (!confirm('Unsaved changes in "' + tab.filename + '". Close anyway?')) return;
     }
     tabs.splice(idx, 1);
+    syncDirtyState();
     if (tabs.length === 0) {
       createTab(null, '');
       return;
@@ -150,6 +151,7 @@ var TabManager = (function() {
       tab.dirty = true;
       renderTabBar();
       updateWindowTitle();
+      syncDirtyState();
     }
   }
 
@@ -159,6 +161,7 @@ var TabManager = (function() {
       tab.dirty = false;
       renderTabBar();
       updateWindowTitle();
+      syncDirtyState();
     }
   }
 
@@ -239,6 +242,10 @@ var TabManager = (function() {
 
   function hasAnyDirty() {
     return tabs.some(function(t) { return t.dirty; });
+  }
+
+  function syncDirtyState() {
+    sendToRust('set_dirty_state', { dirty: hasAnyDirty() });
   }
 
   function updateTabPath(id, path) {

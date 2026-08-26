@@ -137,6 +137,18 @@ test('重试使用触发失败时的源标签路径', () => {
   );
 });
 
+test('macOS/Linux 的 glancemd 协议被拦截后仍显示回退并可重试', () => {
+  const loaded = loadPreview();
+  loaded.setActivePath('/Users/admin/Docs/README.md');
+  loaded.window.showNavigationFallback('glancemd://localhost/README_CN.md');
+  assert.equal(loaded.elements['navigation-fallback'].hidden, false);
+  assert.equal(loaded.elements['navigation-fallback-retry'].hidden, false);
+
+  loaded.listeners['navigation-fallback-retry:click']();
+  assert.equal(loaded.messages.at(-1).command, 'open_file');
+  assert.equal(loaded.messages.at(-1).data.path, '/Users/admin/Docs/README_CN.md');
+});
+
 test('网络链接与页内锚点保持浏览器默认行为', () => {
   ['https://example.com', '#usage'].forEach((href) => {
     const { clickHandler, messages } = loadPreview();
