@@ -158,7 +158,8 @@ fn main() {
                     ));
                 } else {
                     for p in paths {
-                        let msg = serde_json::json!({"command": "open_file", "path": p}).to_string();
+                        let msg =
+                            serde_json::json!({"command": "open_file", "path": p}).to_string();
                         let _ = proxy_pipe.send_event(UserEvent::IpcMessage(msg));
                     }
                 }
@@ -284,7 +285,9 @@ fn main() {
     let _webview = {
         use tao::platform::unix::WindowExtUnix;
         use wry::WebViewBuilderExtUnix;
-        let container = window.default_vbox().expect("Tao GTK container is unavailable");
+        let container = window
+            .default_vbox()
+            .expect("Tao GTK container is unavailable");
         webview_builder
             .build_gtk(container)
             .expect("Failed to build WebView")
@@ -398,6 +401,9 @@ fn build_html() -> String {
 
     INDEX_HTML
         .replace("/* __CSS__ */", STYLE_CSS)
-        .replace("<body>", &format!("<body data-platform=\"{}\">", platform_name()))
+        .replace(
+            "<body>",
+            &format!("<body data-platform=\"{}\">", platform_name()),
+        )
         .replace("<!-- __SCRIPTS__ -->", &scripts)
 }

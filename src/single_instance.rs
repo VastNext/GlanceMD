@@ -26,11 +26,8 @@ const PIPE_WAIT: u32 = 0x0;
 
 #[link(name = "kernel32")]
 extern "system" {
-    fn CreateMutexW(
-        attrs: *const core::ffi::c_void,
-        initial_owner: i32,
-        name: *const u16,
-    ) -> isize;
+    fn CreateMutexW(attrs: *const core::ffi::c_void, initial_owner: i32, name: *const u16)
+        -> isize;
     fn CreateNamedPipeW(
         name: *const u16,
         open_mode: u32,
@@ -118,9 +115,8 @@ pub fn send_open_request(paths: &[String]) -> bool {
             payload.push(0);
         }
     }
-    let bytes = unsafe {
-        std::slice::from_raw_parts(payload.as_ptr().cast::<u8>(), payload.len() * 2)
-    };
+    let bytes =
+        unsafe { std::slice::from_raw_parts(payload.as_ptr().cast::<u8>(), payload.len() * 2) };
 
     let pipe_name = to_wide(PIPE_NAME);
     // 主实例管道线程可能尚未就绪，重试约 2 秒
@@ -149,7 +145,14 @@ pub fn send_open_request(paths: &[String]) -> bool {
 unsafe fn write_all(file: isize, mut data: &[u8]) -> bool {
     while !data.is_empty() {
         let mut written = 0u32;
-        if WriteFile(file, data.as_ptr(), data.len() as u32, &mut written, std::ptr::null()) == 0 {
+        if WriteFile(
+            file,
+            data.as_ptr(),
+            data.len() as u32,
+            &mut written,
+            std::ptr::null(),
+        ) == 0
+        {
             return false;
         }
         if written == 0 {
@@ -203,7 +206,13 @@ pub fn serve_open_requests<F: FnMut(Vec<String>)>(mut on_paths: F) {
         loop {
             let mut n = 0u32;
             let ok = unsafe {
-                ReadFile(pipe, chunk.as_mut_ptr(), chunk.len() as u32, &mut n, std::ptr::null())
+                ReadFile(
+                    pipe,
+                    chunk.as_mut_ptr(),
+                    chunk.len() as u32,
+                    &mut n,
+                    std::ptr::null(),
+                )
             };
             if ok == 0 {
                 let err = unsafe { GetLastError() };
