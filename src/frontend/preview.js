@@ -121,6 +121,35 @@ function copyCodeDone(btn) {
 // 事件委托：preview 每次 innerHTML 重建后仍有效，无需重新绑定
 document.getElementById('preview-container').addEventListener('click', function(e) {
   if (!e.target || !e.target.closest) return;
+  var link = e.target.closest('a');
+  if (link) {
+    var href = link.getAttribute('href');
+    var windowsPath = href && /^[a-zA-Z]:[\\/]/.test(href);
+    if (href && (windowsPath || !/^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(href))) {
+      var tab = typeof TabManager !== 'undefined' ? TabManager.getActiveTab() : null;
+      if (tab && tab.path) {
+        var rawPath = href.replace(/[?#].*$/, '');
+        var decoded;
+        try {
+          decoded = decodeURIComponent(rawPath).replace(/\\/g, '/');
+        } catch (_) {
+          e.preventDefault();
+          if (typeof showError === 'function') showError('链接地址格式无效');
+          return;
+        }
+        var path;
+        if (/^[a-zA-Z]:\//.test(decoded) || decoded.startsWith('/')) {
+          path = decoded;
+        } else {
+          var base = tab.path.replace(/\\/g, '/').replace(/\/[^/]*$/, '');
+          path = base + '/' + decoded.replace(/^\.\//, '');
+        }
+        e.preventDefault();
+        sendToRust('open_file', { path: path });
+      }
+    }
+    return;
+  }
   var btn = e.target.closest('.code-copy-btn');
   if (!btn) return;
   var pre = btn.parentElement;
