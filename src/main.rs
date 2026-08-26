@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 
 use std::borrow::Cow;
 use std::io::Read;
@@ -9,12 +9,17 @@ use tao::{
     event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy},
     window::WindowBuilder,
 };
+#[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{HWND, RECT};
-use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOZORDER};
-use wry::{WebViewBuilder, WebViewBuilderExtWindows, WebViewExtWindows};
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::{
+    SetWindowPos, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOZORDER,
+};
+use wry::WebViewBuilder;
 
 mod file_ops;
 mod ipc;
+#[cfg(target_os = "windows")]
 mod single_instance;
 mod state;
 mod window_state;
@@ -28,6 +33,48 @@ const TABS_JS: &str = include_str!("frontend/tabs.js");
 const MARKED_JS: &str = include_str!("frontend/marked.min.js");
 const HLJS: &str = include_str!("frontend/highlight.min.js");
 const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
+
+pub(crate) const fn platform_base_url() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "http://glancemd.localhost/"
+    } else {
+        "glancemd://localhost/"
+    }
+}
+
+const fn platform_name() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "macos"
+    } else {
+        "linux"
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn stdin_is_piped() -> bool {
+    extern "system" {
+        fn GetStdHandle(nStdHandle: u32) -> isize;
+        fn GetFileType(hFile: isize) -> u32;
+    }
+
+    const STD_INPUT_HANDLE: u32 = 0xFFFF_FFF6;
+    const FILE_TYPE_DISK: u32 = 0x0001;
+    const FILE_TYPE_PIPE: u32 = 0x0003;
+
+    unsafe {
+        let handle = GetStdHandle(STD_INPUT_HANDLE);
+        let file_type = GetFileType(handle);
+        file_type == FILE_TYPE_PIPE || file_type == FILE_TYPE_DISK
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn stdin_is_piped() -> bool {
+    use std::io::IsTerminal;
+    !std::io::stdin().is_terminal()
+}
 
 /// 解码内嵌 PNG 为窗口图标（Alt+Tab / 任务栏 / 标题栏用）
 fn load_window_icon() -> Option<tao::window::Icon> {
@@ -72,8 +119,10 @@ fn main() {
         }
     }
 
-    // ── 单实例：已有实例在运行时，转发文件参数（在其窗口新开标签页）后退出 ──
+    // Windows 保持原有单实例行为；macOS/Linux 首版允许多实例。
+    #[cfg(target_os = "windows")]
     let _primary = single_instance::try_acquire_primary();
+    #[cfg(target_os = "windows")]
     if _primary.is_none() {
         let forward: Vec<String> = cli_file.clone().into_iter().collect();
         if single_instance::send_open_request(&forward) {
@@ -83,27 +132,12 @@ fn main() {
     }
 
     // Read stdin if --stdin flag and stdin is a pipe/file (not a console)
-    if stdin_flag {
-        extern "system" {
-            fn GetStdHandle(nStdHandle: u32) -> isize;
-            fn GetFileType(hFile: isize) -> u32;
-        }
-        const STD_INPUT_HANDLE: u32 = 0xFFFF_FFF6; // (DWORD)-10
-        const FILE_TYPE_DISK: u32 = 0x0001;
-        const FILE_TYPE_PIPE: u32 = 0x0003;
-
-        let is_piped = unsafe {
-            let handle = GetStdHandle(STD_INPUT_HANDLE);
-            let ft = GetFileType(handle);
-            ft == FILE_TYPE_PIPE || ft == FILE_TYPE_DISK
-        };
-        if is_piped {
-            let mut buf = String::new();
-            if std::io::stdin().read_to_string(&mut buf).is_ok() && !buf.is_empty() {
-                let mut st = app_state.lock().unwrap();
-                st.pending_content = Some(buf);
-                st.pending_title = title_arg;
-            }
+    if stdin_flag && stdin_is_piped() {
+        let mut buf = String::new();
+        if std::io::stdin().read_to_string(&mut buf).is_ok() && !buf.is_empty() {
+            let mut st = app_state.lock().unwrap();
+            st.pending_content = Some(buf);
+            st.pending_title = title_arg;
         }
     }
 
@@ -112,7 +146,8 @@ fn main() {
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let proxy: EventLoopProxy<UserEvent> = event_loop.create_proxy();
 
-    // 主实例：后台线程监听管道，把第二实例转发的文件参数变成 open_file IPC
+    // Windows 主实例：后台线程监听管道，把第二实例转发的文件参数变成 open_file IPC。
+    #[cfg(target_os = "windows")]
     if _primary.is_some() {
         let proxy_pipe = proxy.clone();
         std::thread::spawn(move || {
@@ -133,7 +168,7 @@ fn main() {
 
     let window = WindowBuilder::new()
         .with_title("GlanceMD - Untitled")
-        .with_decorations(false)
+        .with_decorations(!cfg!(target_os = "windows"))
         .with_window_icon(load_window_icon())
         .with_inner_size(LogicalSize::new(size.0 as f64, size.1 as f64))
         .with_position(LogicalPosition::new(pos.0 as f64, pos.1 as f64))
@@ -149,7 +184,7 @@ fn main() {
     let proxy_drop = proxy.clone();
 
     let state_proto = Arc::clone(&app_state);
-    let _webview = WebViewBuilder::new()
+    let webview_builder = WebViewBuilder::new()
         .with_custom_protocol("glancemd".to_string(), move |_id, request| {
             let uri = request.uri().path();
             if uri == "/" || uri == "/index.html" {
@@ -198,7 +233,7 @@ fn main() {
                     .unwrap()
             }
         })
-        .with_url("http://glancemd.localhost/")
+        .with_url(platform_base_url())
         .with_ipc_handler(move |request| {
             let body = request.body().to_string();
             let _ = proxy_ipc.send_event(UserEvent::IpcMessage(body));
@@ -237,14 +272,32 @@ fn main() {
             }
             true
         })
-        .with_browser_accelerator_keys(false)
-        .with_devtools(true)
+        .with_devtools(cfg!(debug_assertions));
+
+    #[cfg(target_os = "windows")]
+    let webview_builder = {
+        use wry::WebViewBuilderExtWindows;
+        webview_builder.with_browser_accelerator_keys(false)
+    };
+
+    #[cfg(target_os = "linux")]
+    let _webview = {
+        use tao::platform::unix::WindowExtUnix;
+        use wry::WebViewBuilderExtUnix;
+        let container = window.default_vbox().expect("Tao GTK container is unavailable");
+        webview_builder
+            .build_gtk(container)
+            .expect("Failed to build WebView")
+    };
+
+    #[cfg(not(target_os = "linux"))]
+    let _webview = webview_builder
         .build(&window)
         .expect("Failed to build WebView");
 
     // Store CLI file path to open once JS is ready
     if let Some(file_path) = cli_file {
-        app_state.lock().unwrap().pending_file = Some(file_path);
+        app_state.lock().unwrap().pending_files.push(file_path);
     }
 
     event_loop.run(move |event, _, control_flow| {
@@ -258,15 +311,54 @@ fn main() {
                 event: WindowEvent::Resized(new_size),
                 ..
             } => {
-                let w = new_size.width as i32;
-                let h = new_size.height as i32;
-                unsafe {
-                    let controller = _webview.controller();
-                    let _ = controller.SetBounds(RECT { left: 0, top: 0, right: w, bottom: h });
-                    let mut host = HWND::default();
-                    if controller.ParentWindow(&mut host).is_ok() {
-                        let _ = SetWindowPos(host, None, 0, 0, w, h,
-                            SWP_ASYNCWINDOWPOS | SWP_NOACTIVATE | SWP_NOZORDER);
+                #[cfg(target_os = "windows")]
+                {
+                    use wry::WebViewExtWindows;
+                    let w = new_size.width as i32;
+                    let h = new_size.height as i32;
+                    unsafe {
+                        let controller = _webview.controller();
+                        let _ = controller.SetBounds(RECT {
+                            left: 0,
+                            top: 0,
+                            right: w,
+                            bottom: h,
+                        });
+                        let mut host = HWND::default();
+                        if controller.ParentWindow(&mut host).is_ok() {
+                            let _ = SetWindowPos(
+                                host,
+                                None,
+                                0,
+                                0,
+                                w,
+                                h,
+                                SWP_ASYNCWINDOWPOS | SWP_NOACTIVATE | SWP_NOZORDER,
+                            );
+                        }
+                    }
+                }
+            }
+            #[cfg(target_os = "macos")]
+            Event::Opened { urls } => {
+                let paths = urls
+                    .into_iter()
+                    .filter_map(|url| url.to_file_path().ok())
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>();
+                if !paths.is_empty() {
+                    let frontend_ready = app_state.lock().unwrap().frontend_ready;
+                    if frontend_ready {
+                        for path in paths {
+                            let msg = serde_json::json!({
+                                "command": "open_file",
+                                "path": path
+                            })
+                            .to_string();
+                            ipc::handle_ipc_message(&msg, &_webview, &window, &app_state);
+                        }
+                    } else {
+                        app_state.lock().unwrap().pending_files.extend(paths);
                     }
                 }
             }
@@ -306,5 +398,6 @@ fn build_html() -> String {
 
     INDEX_HTML
         .replace("/* __CSS__ */", STYLE_CSS)
+        .replace("<body>", &format!("<body data-platform=\"{}\">", platform_name()))
         .replace("<!-- __SCRIPTS__ -->", &scripts)
 }

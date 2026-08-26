@@ -203,6 +203,14 @@ html, body {
   flex-shrink: 0;
 }
 
+body:not([data-platform="windows"]) #window-controls {
+  display: none;
+}
+
+body:not([data-platform="windows"]) #titlebar {
+  -webkit-app-region: no-drag;
+}
+
 #window-controls button {
   width: 44px;
   height: 100%;

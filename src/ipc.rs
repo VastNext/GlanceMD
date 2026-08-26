@@ -101,7 +101,7 @@ pub fn handle_ipc_message(
             if let Some(ref path) = parsed.path {
                 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
                 let encoded = utf8_percent_encode(path, NON_ALPHANUMERIC).to_string();
-                let url = format!("http://glancemd.localhost/local-image?{}", encoded);
+                let url = format!("{}local-image?{}", crate::platform_base_url(), encoded);
                 let script = format!(
                     "window.__setImage({}, {})",
                     serde_json::to_string(path).unwrap(),
@@ -119,21 +119,28 @@ pub fn handle_ipc_message(
                 "document.getElementById('drop-overlay').classList.remove('visible')");
         }
         "ready" => {
-            let (pending_file, pending_content, pending_title) = {
+            let (pending_files, pending_content, pending_title) = {
                 let mut st = state.lock().unwrap();
-                (st.pending_file.take(), st.pending_content.take(), st.pending_title.take())
+                st.frontend_ready = true;
+                (
+                    std::mem::take(&mut st.pending_files),
+                    st.pending_content.take(),
+                    st.pending_title.take(),
+                )
             };
-            if let Some(p) = pending_file {
-                match file_ops::read_file(&p) {
-                    Ok(contents) => {
-                        send_to_js(webview, "file_opened", &serde_json::json!({
-                            "content": contents,
-                            "path": p
-                        }));
+            if !pending_files.is_empty() {
+                for p in pending_files {
+                    match file_ops::read_file(&p) {
+                        Ok(contents) => {
+                            send_to_js(webview, "file_opened", &serde_json::json!({
+                                "content": contents,
+                                "path": p
+                            }));
+                        }
+                        Err(e) => send_to_js(webview, "error", &serde_json::json!({
+                            "message": format!("Failed to open file: {e}")
+                        })),
                     }
-                    Err(e) => send_to_js(webview, "error", &serde_json::json!({
-                        "message": format!("Failed to open file: {e}")
-                    })),
                 }
             } else if let Some(content) = pending_content {
                 let title = pending_title.unwrap_or_else(|| "stdin".to_string());
