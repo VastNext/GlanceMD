@@ -17,13 +17,13 @@ main = true
 extensions = ["md", "markdown"]
 mimeType = "text/markdown"
 name = "Markdown Document"
-role = "Editor"
+role = "editor"
 
 [[fileAssociations]]
 extensions = ["txt"]
 mimeType = "text/plain"
 name = "Text Document"
-role = "Editor"
+role = "editor"
 
 [linux]
 generateDesktopEntry = true
