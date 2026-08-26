@@ -15,6 +15,8 @@ struct IpcMessage {
     path: Option<String>,
     #[serde(default)]
     title: Option<String>,
+    #[serde(default)]
+    dirty: Option<bool>,
 }
 
 pub fn handle_ipc_message(
@@ -97,6 +99,9 @@ pub fn handle_ipc_message(
             if let Some(title) = parsed.title {
                 window.set_title(&title);
             }
+        }
+        "set_dirty_state" => {
+            state.lock().unwrap().has_dirty_tabs = parsed.dirty.unwrap_or(false);
         }
         "window_minimize" => {
             window.set_minimized(true);

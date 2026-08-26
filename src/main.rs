@@ -70,6 +70,19 @@ fn stdin_is_piped() -> bool {
     }
 }
 
+fn should_close_window(has_dirty_tabs: bool, confirm_discard: impl FnOnce() -> bool) -> bool {
+    !has_dirty_tabs || confirm_discard()
+}
+
+fn save_window_state(window: &tao::window::Window) {
+    let inner_size = window.inner_size();
+    let outer_pos = window.outer_position().unwrap_or_default();
+    window_state::save_window_state(
+        (outer_pos.x, outer_pos.y),
+        (inner_size.width, inner_size.height),
+    );
+}
+
 #[cfg(not(target_os = "windows"))]
 fn stdin_is_piped() -> bool {
     use std::io::IsTerminal;
@@ -369,11 +382,55 @@ fn main() {
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
-                let _ = _webview.evaluate_script("window.__requestNativeClose()");
+                let has_dirty_tabs = app_state.lock().unwrap().has_dirty_tabs;
+                let close = should_close_window(has_dirty_tabs, || {
+                    use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
+
+                    MessageDialog::new()
+                        .set_level(MessageLevel::Warning)
+                        .set_title("GlanceMD")
+                        .set_description("存在未保存的修改，确定要关闭吗？")
+                        .set_buttons(MessageButtons::YesNo)
+                        .show()
+                        == MessageDialogResult::Yes
+                });
+
+                if close {
+                    save_window_state(&window);
+                    *control_flow = ControlFlow::Exit;
+                }
             }
             _ => {}
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_close_window;
+    use std::cell::Cell;
+
+    #[test]
+    fn clean_window_closes_without_prompting() {
+        let prompted = Cell::new(false);
+        let close = should_close_window(false, || {
+            prompted.set(true);
+            false
+        });
+
+        assert!(close);
+        assert!(!prompted.get());
+    }
+
+    #[test]
+    fn dirty_window_stays_open_when_discard_is_rejected() {
+        assert!(!should_close_window(true, || false));
+    }
+
+    #[test]
+    fn dirty_window_closes_when_discard_is_confirmed() {
+        assert!(should_close_window(true, || true));
+    }
 }
 
 fn escape_for_script_tag(js: &str) -> String {

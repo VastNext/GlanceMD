@@ -698,11 +698,6 @@ document.getElementById('btn-close').addEventListener('click', function() {
   sendToRust('window_close');
 });
 
-window.__requestNativeClose = function() {
-  if (TabManager.hasAnyDirty() && !confirm('You have unsaved changes. Close anyway?')) return;
-  sendToRust('window_close');
-};
-
 // Toolbar Buttons
 document.getElementById('btn-new').addEventListener('click', function() { TabManager.createTab(null, ''); });
 document.getElementById('btn-open').addEventListener('click', function() { sendToRust('open_file'); });

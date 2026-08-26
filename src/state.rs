@@ -4,6 +4,7 @@ pub struct AppState {
     pub pending_content: Option<String>,
     pub pending_title: Option<String>,
     pub frontend_ready: bool,
+    pub has_dirty_tabs: bool,
 }
 
 impl AppState {
@@ -14,6 +15,7 @@ impl AppState {
             pending_content: None,
             pending_title: None,
             frontend_ready: false,
+            has_dirty_tabs: false,
         }
     }
 }
