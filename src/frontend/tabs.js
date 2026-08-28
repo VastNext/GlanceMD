@@ -3,6 +3,12 @@ var TabManager = (function() {
   var activeTabId = null;
   var tabIdCounter = 0;
 
+  /* ── 拖拽重排状态 ──
+     activeDrag 持有当前拖拽上下文；dragJustEnded 用于抑制拖拽结束后的 click 误触发 */
+  var activeDrag = null;
+  var dragJustEnded = false;
+  var DRAG_THRESHOLD = 5; /* 位移超过该像素数才视为拖拽，否则仍是普通点击 */
+
   function normalizePath(p) {
     return p.replace(/\\/g, '/');
   }
@@ -181,42 +187,140 @@ var TabManager = (function() {
     document.body.classList.toggle('has-tabs', show);
     bar.innerHTML = '';
     tabs.forEach(function(tab) {
-      var el = document.createElement('div');
-      el.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
-
-      var label = document.createElement('span');
-      label.className = 'tab-label';
-      label.textContent = tab.filename;
-      el.appendChild(label);
-
-      if (tab.dirty) {
-        var dot = document.createElement('span');
-        dot.className = 'tab-dirty';
-        dot.textContent = '\u2022';
-        el.appendChild(dot);
-      }
-
-      var close = document.createElement('span');
-      close.className = 'tab-close';
-      close.innerHTML = '&times;';
-      close.addEventListener('click', function(e) {
-        e.stopPropagation();
-        closeTab(tab.id);
-      });
-      el.appendChild(close);
-
-      el.addEventListener('click', function() {
-        switchTab(tab.id);
-      });
-      el.addEventListener('mousedown', function(e) {
-        if (e.button === 1) {
-          e.preventDefault();
-          closeTab(tab.id);
-        }
-      });
-      bar.appendChild(el);
+      bar.appendChild(createTabElement(tab));
     });
   }
+
+  function createTabElement(tab) {
+    var el = document.createElement('div');
+    el.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
+    el.dataset.tabId = tab.id;
+
+    var label = document.createElement('span');
+    label.className = 'tab-label';
+    label.textContent = tab.filename;
+    el.appendChild(label);
+
+    if (tab.dirty) {
+      var dot = document.createElement('span');
+      dot.className = 'tab-dirty';
+      dot.textContent = '\u2022';
+      el.appendChild(dot);
+    }
+
+    var close = document.createElement('span');
+    close.className = 'tab-close';
+    close.innerHTML = '&times;';
+    close.addEventListener('click', function(e) {
+      e.stopPropagation();
+      closeTab(tab.id);
+    });
+    el.appendChild(close);
+
+    el.addEventListener('click', function() {
+      /* 拖拽结束时浏览器会补发一次 click，忽略以免误切换 */
+      if (dragJustEnded) {
+        dragJustEnded = false;
+        return;
+      }
+      switchTab(tab.id);
+    });
+    el.addEventListener('mousedown', function(e) {
+      if (e.button === 1) {
+        e.preventDefault();
+        closeTab(tab.id);
+      } else if (e.button === 0) {
+        beginDragWatch(el, e);
+      }
+    });
+    return el;
+  }
+
+  /* ── 拖拽重排 ──
+     mousedown 记录起点，位移超阈值进入拖拽；拖拽期间直接移动 DOM 元素
+     实时预览顺序，mouseup 后按 DOM 顺序同步 tabs 数组 */
+
+  function beginDragWatch(el, e) {
+    if (tabs.length < 2) return;
+    activeDrag = {
+      el: el,
+      startX: e.clientX,
+      startY: e.clientY,
+      dragging: false
+    };
+  }
+
+  function onDragMove(e) {
+    if (!activeDrag) return;
+    if (!activeDrag.dragging) {
+      var dx = e.clientX - activeDrag.startX;
+      var dy = e.clientY - activeDrag.startY;
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      activeDrag.dragging = true;
+      dragJustEnded = true;
+      activeDrag.el.classList.add('dragging');
+      document.body.classList.add('tab-drag-active');
+    }
+    e.preventDefault();
+
+    var el = activeDrag.el;
+    var bar = document.getElementById('tab-bar');
+    var barRect = bar.getBoundingClientRect();
+
+    /* 接近 tab 栏左右边缘时自动横向滚动 */
+    var edge = 28;
+    if (e.clientX < barRect.left + edge) {
+      bar.scrollLeft -= 8;
+    } else if (e.clientX > barRect.right - edge) {
+      bar.scrollLeft += 8;
+    }
+
+    /* 依据鼠标相对各 tab 中点的位置实时移动元素 */
+    var siblings = Array.prototype.slice.call(bar.querySelectorAll('.tab'));
+    var placed = false;
+    for (var i = 0; i < siblings.length; i++) {
+      var s = siblings[i];
+      if (s === el) continue;
+      var r = s.getBoundingClientRect();
+      if (e.clientX < r.left + r.width / 2) {
+        if (s.previousElementSibling !== el) bar.insertBefore(el, s);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      var last = siblings[siblings.length - 1];
+      if (last && last !== el && el.previousElementSibling !== last) {
+        bar.insertBefore(el, last.nextSibling);
+      }
+    }
+  }
+
+  function onDragEnd() {
+    if (!activeDrag) return;
+    var el = activeDrag.el;
+    var wasDragging = activeDrag.dragging;
+    activeDrag = null;
+    if (!wasDragging) return;
+
+    el.classList.remove('dragging');
+    document.body.classList.remove('tab-drag-active');
+
+    /* 按 DOM 顺序重排 tabs 数组 */
+    var order = Array.prototype.map.call(
+      document.getElementById('tab-bar').querySelectorAll('.tab'),
+      function(n) { return Number(n.dataset.tabId); }
+    );
+    tabs.sort(function(a, b) {
+      return order.indexOf(a.id) - order.indexOf(b.id);
+    });
+    renderTabBar();
+    /* renderTabBar 已重建 DOM，旧元素上的 click 不会再触发，重置抑制标志 */
+    dragJustEnded = false;
+  }
+
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
 
   function nextTab() {
     if (tabs.length < 2) return;
