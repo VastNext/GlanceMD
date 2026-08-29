@@ -1,4 +1,9 @@
-# GlanceMD 目录项目管理功能影响评估
+# GlanceMD 目录项目管理功能影响评估（初始范围）
+
+> **状态说明：** 本报告记录最初“单目录 Markdown 导航”范围的评估。后续需求已扩展为完整项目工作区，并暂定新产品名 **GlanceUltraMD**。当前有效的完整方案请阅读：
+>
+> - `product-decisions.md`：已确认产品决策
+> - `GlanceUltraMD-product-architecture-proposal.md`：最新产品与架构方案
 
 ## 结论先行
 
