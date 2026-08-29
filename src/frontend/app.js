@@ -357,7 +357,11 @@ function updateTOC() {
     item.className = 'toc-item toc-h' + h.level;
     item.textContent = h.text;
     item.addEventListener('click', function() {
-      if (currentMode === 'edit') {
+      if (splitMode) {
+        /* split 下编辑区与预览区同时联动跳转 */
+        scrollEditorToLine(h.line);
+        scrollPreviewToHeading(idx);
+      } else if (currentMode === 'edit') {
         scrollEditorToLine(h.line);
       } else {
         scrollPreviewToHeading(idx);

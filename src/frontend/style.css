@@ -6,9 +6,6 @@
   --text: #c8c8d0;
   --text-secondary: #85858f;
   --text-dim: #6a6a78;
-  --accent: #e0a47a;
-  --accent-glow: rgba(224, 164, 122, 0.14);
-  --accent-hover: #ebbf9e;
   --tab-active-text: #f4f4f8;
   /* 编辑画布：暗色下比 chrome 更深（沉浸惯例），亮色下用纸面白（参考 Notion canvas） */
   --editor-bg: #111113;
@@ -50,6 +47,12 @@
   --mk-row-hover: #1a1a1a;
   --mk-mark-bg: #f59e0b;
   --mk-mark-color: #0a0a0a;
+
+  /* 标题同款紫→粉渐变（两个主题下标题色一致，只定义一次） */
+  --heading-gradient: linear-gradient(180deg, var(--mk-heading), var(--mk-heading-end));
+  /* 渐变的配套衍生：淡渐变背景 / 纯紫透明（caret、selection 等不可渐变场景） */
+  --heading-glow: linear-gradient(180deg, rgba(168, 85, 247, 0.16), rgba(236, 72, 153, 0.16));
+  --heading-soft: rgba(168, 85, 247, 0.2);
 }
 
 /* Light theme — Catppuccin Latte inspired */
@@ -61,9 +64,6 @@
   --text: #4c4f69;
   --text-secondary: #6c6f85;
   --text-dim: #8c8fa1;
-  --accent: #c4723a;
-  --accent-glow: rgba(196, 114, 58, 0.12);
-  --accent-hover: #b5621f;
   --tab-active-text: #2a2d3a;
   /* 编辑画布：纯白纸面，与浅灰 UI chrome 形成"纸放在桌上"的层次 */
   --editor-bg: #ffffff;
@@ -166,15 +166,15 @@ html, body {
   transform: scale(0.95);
 }
 
-/* Preview toggle active state — warm glow */
+/* Preview toggle active state — 标题同款紫粉高亮 */
 .titlebar-actions button.active {
-  color: var(--accent);
-  background: var(--accent-glow);
+  color: var(--mk-heading);
+  background: var(--heading-glow);
 }
 
 .titlebar-actions button.active:hover {
-  color: var(--accent-hover);
-  background: var(--accent-glow);
+  color: var(--mk-link-hover);
+  background: var(--heading-glow);
 }
 
 /* Separator dot between groups */
@@ -387,7 +387,10 @@ body.tab-drag-active .tab {
 }
 
 .tab-dirty {
-  color: var(--accent);
+  background: var(--heading-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-size: 14px;
   line-height: 1;
 }
@@ -471,10 +474,10 @@ body.tab-drag-active .tab {
   cursor: pointer;
 }
 
-.navigation-fallback-actions button:hover { border-color: var(--accent); }
+.navigation-fallback-actions button:hover { border-color: var(--mk-heading); }
 
 .navigation-fallback-actions button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--mk-heading);
   outline-offset: 2px;
 }
 
@@ -516,7 +519,7 @@ body.tab-drag-active .tab {
   resize: none;
   outline: none;
   tab-size: 4;
-  caret-color: var(--accent);
+  caret-color: var(--mk-heading);
 }
 
 #editor::placeholder {
@@ -525,7 +528,7 @@ body.tab-drag-active .tab {
 }
 
 #editor::selection {
-  background: var(--accent-glow);
+  background: var(--heading-soft);
 }
 
 /* ============================================
@@ -579,7 +582,7 @@ body.split-mode #split-resize-handle { display: block; }
 
 #split-resize-handle:hover,
 #split-resize-handle.dragging {
-  background: var(--accent);
+  background: var(--heading-gradient);
   opacity: 0.4;
 }
 
@@ -605,7 +608,7 @@ body.split-mode #preview-resize-handle { display: none; }
 
 #preview-resize-handle:hover,
 #preview-resize-handle.dragging {
-  background: var(--accent);
+  background: var(--heading-gradient);
   opacity: 0.4;
   border-radius: 3px;
 }
@@ -1031,7 +1034,10 @@ body.preview-resizing #preview { user-select: none; }
 }
 
 #status-mode {
-  color: var(--accent);
+  background: var(--heading-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-weight: 600;
   font-size: 9.5px;
   letter-spacing: 0.08em;
@@ -1088,7 +1094,7 @@ body.toc-resizing #toc-panel { transition: none; }
 
 #toc-resize-handle:hover,
 #toc-resize-handle.dragging {
-  background: var(--accent);
+  background: var(--heading-gradient);
   opacity: 0.4;
 }
 
@@ -1120,7 +1126,10 @@ body.toc-resizing * { cursor: col-resize !important; }
 }
 
 .toc-item.active {
-  color: var(--accent);
+  background: var(--heading-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .toc-h1 { padding-left: 12px; font-weight: 600; }
@@ -1229,7 +1238,7 @@ body.toc-resizing * { cursor: col-resize !important; }
   outline: none;
 }
 
-#find-input:focus { border-color: var(--accent); }
+#find-input:focus { border-color: var(--mk-heading); }
 
 #find-count {
   font-size: 10.5px;
@@ -1268,23 +1277,23 @@ body.toc-resizing * { cursor: col-resize !important; }
 
 /* Find match highlights in preview（加 #preview 前缀以保证优先级高于 #preview mark） */
 #preview mark.find-match {
-  background: rgba(224, 164, 122, 0.25);
+  background: var(--heading-soft);
   color: inherit;
   border-radius: 2px;
 }
 
 #preview mark.find-match.find-active {
-  background: var(--accent);
-  color: var(--bg-base);
+  background: var(--heading-gradient);
+  color: #fff;
   -webkit-text-fill-color: initial;
 }
 
 [data-theme="light"] #preview mark.find-match {
-  background: rgba(196, 114, 58, 0.2);
+  background: var(--heading-soft);
 }
 
 [data-theme="light"] #preview mark.find-match.find-active {
-  background: var(--accent);
+  background: var(--heading-gradient);
   color: #fff;
   -webkit-text-fill-color: initial;
 }
