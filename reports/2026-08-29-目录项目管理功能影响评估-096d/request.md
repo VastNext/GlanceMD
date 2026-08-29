@@ -12,7 +12,7 @@
 
 ## 范围演进
 
-后续访谈确认该需求已扩展为完整工作区产品：文件监听、项目树与 Outline 同屏、多选、完整文件操作、全文搜索、设置、快捷键、命令面板、崩溃恢复等均为必需能力。新产品暂定名 **GlanceUltraMD**，完整方案见 `GlanceUltraMD-product-architecture-proposal.md`。
+后续访谈确认该需求已扩展为完整工作区产品：文件监听、项目树与 Outline 同屏、多选、完整文件操作、全文搜索、设置、快捷键、命令面板、崩溃恢复等均为必需能力。正式产品名确定为 **GlanceMD Ultra**，完整方案见 `GlanceMD-Ultra-product-architecture-proposal.md`。
 
 ## 执行假设
 

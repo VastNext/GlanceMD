@@ -1,4 +1,4 @@
-# GlanceUltraMD 产品与架构方案
+# GlanceMD Ultra 产品与架构方案
 
 > 状态：现阶段调研与产品决策汇总稿  
 > 日期：2026-08-29  
@@ -10,18 +10,18 @@
 
 这已经不是 GlanceMD 的一个普通功能，而是一个新的产品层级。建议采用新产品名：
 
-# **GlanceUltraMD**
+# **GlanceMD Ultra**
 
-GlanceUltraMD 的定位不是“更大的 GlanceMD”，而是：
+GlanceMD Ultra 的定位不是“更大的 GlanceMD”，而是：
 
 > 面向本地 Markdown 与结构化文本项目的轻量原生工作区编辑器。
 
-GlanceMD 继续保持“快速打开单个 Markdown、轻量查看与编辑”的核心定位；GlanceUltraMD 面向目录型知识库、文档项目、技术写作仓库和本地文本工作流。
+GlanceMD 继续保持“快速打开单个 Markdown、轻量查看与编辑”的核心定位；GlanceMD Ultra 面向目录型知识库、文档项目、技术写作仓库和本地文本工作流。
 
 ```mermaid
 flowchart LR
     A[GlanceMD\n单文件 / 多 Tab\n轻量查看编辑] -->|共享核心能力| C[共享编辑内核\nMarkdown 渲染\nTab / 保存 / 主题]
-    B[GlanceUltraMD\n单项目工作区\n项目树 / 监听 / 搜索 / 设置] -->|复用| C
+    B[GlanceMD Ultra\n单项目工作区\n项目树 / 监听 / 搜索 / 设置] -->|复用| C
     B --> D[Workspace 子系统]
     D --> E[文件树与文件操作]
     D --> F[监听与冲突]
@@ -53,7 +53,7 @@ shared-core
 GlanceMD
 └── 单文件优先的轻量壳
 
-GlanceUltraMD
+GlanceMD Ultra
 └── Workspace、项目树、监听、搜索、设置等完整壳
 ```
 
@@ -357,11 +357,11 @@ Rust 负责文件系统真实状态和可信边界；JS 负责 UI 状态。任�
 - 不采用 Monaco 或 Electron。
 - 不保证 Linux 文件管理器选中文件，只保证打开父目录。
 - 不做多根工作区；一个窗口一个项目。
-- 不把 GlanceUltraMD 定位为代码 IDE。
+- 不把 GlanceMD Ultra 定位为代码 IDE。
 
 ## 14. 下一步
 
-1. 确认采用“同仓共享核心 + GlanceUltraMD 产品入口”的产品结构。
+1. 确认采用“同仓共享核心 + GlanceMD Ultra 产品入口”的产品结构。
 2. 为阶段 0–1 写正式 OpenSpec/技术规格。
 3. 先做架构地基和项目树垂直切片，不同时启动所有功能。
 4. 项目树垂直切片完成后，用真实 10k 文件目录验证性能，再锁定 watcher/search 技术方案。
