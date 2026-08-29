@@ -561,6 +561,34 @@ body.split-mode #editor-container.active {
   border-right: 1px solid var(--border);
 }
 
+/* ── Split 分界拖拽柄：贴编辑容器右缘（两栏交界），交互与 TOC 拖宽一致 ── */
+#split-resize-handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 20;
+  transition: background 0.15s;
+}
+
+body.split-mode #split-resize-handle { display: block; }
+
+#split-resize-handle:hover,
+#split-resize-handle.dragging {
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+body.split-resizing { cursor: col-resize !important; }
+body.split-resizing * { cursor: col-resize !important; }
+
+/* split 下隐藏预览右缘的内容列宽拖拽柄，避免与分界拖拽混淆 */
+body.split-mode #preview-resize-handle { display: none; }
+
 /* Preview resize handle */
 #preview-resize-handle {
   position: absolute;

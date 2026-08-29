@@ -131,6 +131,8 @@ function toggleMode() {
     splitMode = false;
     document.body.classList.remove('split-mode');
     document.getElementById('btn-split').classList.remove('active');
+    /* 退出 split，还原预览栏的弹性宽度 */
+    ($.previewContainer || document.getElementById('preview-container')).style.flex = '';
   }
 
   var iconPreview = document.getElementById('icon-preview');
@@ -215,6 +217,8 @@ function toggleSplit() {
     document.body.classList.remove('split-mode');
     document.getElementById('btn-split').classList.remove('active');
     ($.previewContainer || document.getElementById('preview-container')).classList.remove('active');
+    /* 退出 split，还原预览栏的弹性宽度 */
+    ($.previewContainer || document.getElementById('preview-container')).style.flex = '';
     currentMode = 'edit';
     document.getElementById('btn-toggle').classList.remove('active');
     document.getElementById('status-mode').textContent = 'EDIT';
@@ -227,6 +231,8 @@ function toggleSplit() {
     document.getElementById('btn-split').classList.add('active');
     ($.editorContainer || document.getElementById('editor-container')).classList.add('active');
     ($.previewContainer || document.getElementById('preview-container')).classList.add('active');
+    /* 恢复上次的两栏比例 */
+    if (typeof applySplitRatio === 'function') applySplitRatio();
     var splitTab = TabManager.getActiveTab();
     var splitContent = ($.editor || document.getElementById('editor')).value;
     var splitPreviewEl = $.preview || document.getElementById('preview');
@@ -463,6 +469,73 @@ document.addEventListener('wheel', function(e) {
     preview.style.maxWidth = DEFAULT_WIDTH + 'px';
     try { localStorage.setItem('glancemd-preview-width', DEFAULT_WIDTH); } catch(e) {}
   });
+})();
+
+// Split 分界拖拽：调整编辑/预览两栏比例（交互与 TOC 拖宽一致）
+(function() {
+  var handle = document.getElementById('split-resize-handle');
+  var container = document.getElementById('preview-container');
+  var area = document.getElementById('content');
+  var MIN_PANE = 240; /* 任一栏最小宽度，保证两侧始终可用 */
+  var savedRatio = null;
+  try {
+    var v = parseFloat(localStorage.getItem('glancemd-split-ratio'));
+    if (v > 0 && v < 1) savedRatio = v;
+  } catch (e) {}
+
+  var dragging = false;
+
+  function setPaneWidth(px) {
+    container.style.flex = '0 0 ' + Math.round(px) + 'px';
+  }
+
+  function currentWidth() {
+    var m = /(\d+(?:\.\d+)?)px/.exec(container.style.flex || '');
+    return m ? parseFloat(m[1]) : 0;
+  }
+
+  handle.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    dragging = true;
+    handle.classList.add('dragging');
+    document.body.classList.add('split-resizing');
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    var areaRect = area.getBoundingClientRect();
+    /* 预览右缘贴内容区右缘，宽度 = 右缘 X - 鼠标 X */
+    var width = Math.min(areaRect.width - MIN_PANE, Math.max(MIN_PANE, areaRect.right - e.clientX));
+    setPaneWidth(width);
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.classList.remove('split-resizing');
+    var w = currentWidth();
+    if (w > 0) {
+      savedRatio = w / area.getBoundingClientRect().width;
+      try { localStorage.setItem('glancemd-split-ratio', String(savedRatio)); } catch (e) {}
+    }
+  });
+
+  /* 双击恢复 50/50 并清除记忆 */
+  handle.addEventListener('dblclick', function() {
+    container.style.flex = '';
+    savedRatio = null;
+    try { localStorage.removeItem('glancemd-split-ratio'); } catch (e) {}
+  });
+
+  /* 进入 split 时按记忆的比例恢复两栏宽度 */
+  window.applySplitRatio = function() {
+    if (!savedRatio || savedRatio <= 0 || savedRatio >= 1) return;
+    var areaRect = area.getBoundingClientRect();
+    if (areaRect.width < MIN_PANE * 2) return;
+    var width = Math.min(areaRect.width - MIN_PANE, Math.max(MIN_PANE, areaRect.width * savedRatio));
+    setPaneWidth(width);
+  };
 })();
 
 // TOC (outline) width resize
