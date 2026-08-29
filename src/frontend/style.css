@@ -10,6 +10,8 @@
   --accent-glow: rgba(224, 164, 122, 0.14);
   --accent-hover: #ebbf9e;
   --tab-active-text: #f4f4f8;
+  /* 编辑画布：暗色下比 chrome 更深（沉浸惯例），亮色下用纸面白（参考 Notion canvas） */
+  --editor-bg: #111113;
   --link: #7aafcf;
   --border: #252529;
   --border-subtle: #1e1e22;
@@ -63,6 +65,8 @@
   --accent-glow: rgba(196, 114, 58, 0.12);
   --accent-hover: #b5621f;
   --tab-active-text: #2a2d3a;
+  /* 编辑画布：纯白纸面，与浅灰 UI chrome 形成"纸放在桌上"的层次 */
+  --editor-bg: #ffffff;
   --link: #1e66f5;
   --border: #ccd0da;
   --border-subtle: #dce0e8;
@@ -502,7 +506,7 @@ body.tab-drag-active .tab {
 #editor {
   width: 100%;
   height: 100%;
-  background: var(--bg-base);
+  background: var(--editor-bg);
   color: var(--text);
   border: none;
   padding: 28px 32px;
@@ -561,7 +565,8 @@ body.split-mode #editor-container.active {
 #preview-resize-handle {
   position: absolute;
   top: 0;
-  right: -3px;
+  /* 完全落在容器内侧，避免越界部分撑出 #preview-container 的横向滚动条 */
+  right: 0;
   width: 6px;
   height: 100%;
   cursor: col-resize;
