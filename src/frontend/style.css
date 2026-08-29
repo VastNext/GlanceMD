@@ -50,9 +50,11 @@
 
   /* 标题同款紫→粉渐变（两个主题下标题色一致，只定义一次） */
   --heading-gradient: linear-gradient(180deg, var(--mk-heading), var(--mk-heading-end));
-  /* 渐变的配套衍生：淡渐变背景 / 纯紫透明（caret、selection 等不可渐变场景） */
+  /* 渐变的配套衍生：淡渐变背景 / 纯紫透明（caret、find-match 等不可渐变场景） */
   --heading-glow: linear-gradient(180deg, rgba(168, 85, 247, 0.16), rgba(236, 72, 153, 0.16));
   --heading-soft: rgba(168, 85, 247, 0.2);
+  /* 文字选区：暗底需要更高明度 + 更高不透明度才够醒目（对齐 Notion dark 0.5 / VS Code Dark+ 的高对比思路） */
+  --selection-bg: rgba(192, 132, 252, 0.4);
 }
 
 /* Light theme — Catppuccin Latte inspired */
@@ -67,6 +69,8 @@
   --tab-active-text: #2a2d3a;
   /* 编辑画布：纯白纸面，与浅灰 UI chrome 形成"纸放在桌上"的层次 */
   --editor-bg: #ffffff;
+  /* 文字选区：白底上用主紫 25%，淡而清晰 */
+  --selection-bg: rgba(168, 85, 247, 0.25);
   --link: #1e66f5;
   --border: #ccd0da;
   --border-subtle: #dce0e8;
@@ -527,8 +531,9 @@ body.tab-drag-active .tab {
   font-style: italic;
 }
 
-#editor::selection {
-  background: var(--heading-soft);
+/* 文字选区：编辑器与预览统一使用主题选区色（全局规则对 user-select:none 区域无影响） */
+::selection {
+  background: var(--selection-bg);
 }
 
 /* ============================================
