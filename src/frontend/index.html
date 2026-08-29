@@ -48,7 +48,15 @@
     </div>
   </div>
 
-  <div id="tab-bar"></div>
+  <div id="tab-bar-wrap">
+    <button id="tab-nav-left" class="tab-nav" title="Scroll tabs left" aria-label="Scroll tabs left">
+      <svg viewBox="0 0 10 10"><polyline points="6,2 3,5 6,8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div id="tab-bar"></div>
+    <button id="tab-nav-right" class="tab-nav" title="Scroll tabs right" aria-label="Scroll tabs right">
+      <svg viewBox="0 0 10 10"><polyline points="4,2 7,5 4,8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
 
   <div id="find-bar">
     <input id="find-input" type="text" placeholder="Find..." spellcheck="false">

@@ -255,12 +255,20 @@ body:not([data-platform="windows"]) #titlebar {
 /* ============================================
    TAB BAR
    ============================================ */
-#tab-bar {
+#tab-bar-wrap {
   display: flex;
   align-items: center;
   height: 30px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
+}
+
+#tab-bar {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 4px;
@@ -268,6 +276,46 @@ body:not([data-platform="windows"]) #titlebar {
 }
 
 #tab-bar::-webkit-scrollbar { height: 0; }
+
+/* 溢出时的左右滚动按钮：默认隐藏，JS 检测到溢出时显示 */
+.tab-nav {
+  flex-shrink: 0;
+  width: 20px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+}
+
+.tab-nav svg { width: 12px; height: 12px; }
+
+.tab-nav.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.tab-nav:hover { color: var(--text); background: rgba(128, 128, 128, 0.1); }
+
+.tab-nav.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* 拖拽 tab 时隐藏导航按钮，避免干扰 */
+body.tab-drag-active .tab-nav {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
 
 .tab {
   display: flex;
@@ -307,7 +355,8 @@ body:not([data-platform="windows"]) #titlebar {
   bottom: 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: var(--accent);
+  /* 与 marco 主题 H1 标题文字同款渐变（紫→粉） */
+  background: linear-gradient(90deg, var(--mk-heading), var(--mk-heading-end));
 }
 
 /* ── 拖拽重排 ── */

@@ -182,13 +182,15 @@ var TabManager = (function() {
 
   function renderTabBar() {
     var bar = document.getElementById('tab-bar');
+    var wrap = document.getElementById('tab-bar-wrap');
     var show = tabs.length > 1;
-    bar.style.display = show ? '' : 'none';
+    wrap.style.display = show ? '' : 'none';
     document.body.classList.toggle('has-tabs', show);
     bar.innerHTML = '';
     tabs.forEach(function(tab) {
       bar.appendChild(createTabElement(tab));
     });
+    updateTabNav();
   }
 
   function createTabElement(tab) {
@@ -321,6 +323,45 @@ var TabManager = (function() {
 
   document.addEventListener('mousemove', onDragMove);
   document.addEventListener('mouseup', onDragEnd);
+
+  /* ── tab 溢出导航 ──
+     tab 过多超出栏宽时显示左右按钮；同时在滚动区内支持滚轮横向滚动 */
+
+  var TAB_NAV_STEP = 240; /* 每次点击滚动的像素距离 */
+
+  function updateTabNav() {
+    var bar = document.getElementById('tab-bar');
+    var left = document.getElementById('tab-nav-left');
+    var right = document.getElementById('tab-nav-right');
+    if (!bar || !left || !right) return;
+    var overflow = bar.scrollWidth > bar.clientWidth + 1;
+    left.classList.toggle('visible', overflow);
+    right.classList.toggle('visible', overflow);
+    left.classList.toggle('disabled', bar.scrollLeft <= 1);
+    right.classList.toggle('disabled', bar.scrollLeft >= bar.scrollWidth - bar.clientWidth - 1);
+  }
+
+  function initTabNav() {
+    var bar = document.getElementById('tab-bar');
+    var left = document.getElementById('tab-nav-left');
+    var right = document.getElementById('tab-nav-right');
+    if (!bar || !left || !right) return;
+    left.addEventListener('click', function() {
+      bar.scrollLeft -= TAB_NAV_STEP;
+    });
+    right.addEventListener('click', function() {
+      bar.scrollLeft += TAB_NAV_STEP;
+    });
+    bar.addEventListener('scroll', updateTabNav);
+    /* 垂直滚轮转为 tab 栏横向滚动 */
+    bar.addEventListener('wheel', function(e) {
+      if (bar.scrollWidth <= bar.clientWidth) return;
+      e.preventDefault();
+      bar.scrollLeft += e.deltaY;
+    });
+    window.addEventListener('resize', updateTabNav);
+  }
+  initTabNav();
 
   function nextTab() {
     if (tabs.length < 2) return;
